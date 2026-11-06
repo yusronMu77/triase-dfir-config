@@ -1,0 +1,6 @@
+[project]
+name = "astria-config"
+version = "0.0.0"
+description = "Konfigurasi dan katalog; rahasia tulis-saja."
+requires-python = ">=3.14"
+dependencies = []
