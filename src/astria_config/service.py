@@ -33,7 +33,7 @@ from astria_config.db import (
     setting_history,
     utcnow,
 )
-from astria_config.gateway_client import GatewayUnavailable
+from astria_config.gateway_client import GatewayRejected, GatewayUnavailable
 from astria_config.layers import Layers
 from astria_config.metrics import (
     AUDIT_FAILURES,
@@ -348,6 +348,8 @@ class ConfigService:
             raise AstriaError("GATEWAY_TIDAK_TERSEDIA", "penerusan ke gateway tidak dikonfigurasi", 503)
         try:
             await self._gateway.put_secret(key, value)
+        except GatewayRejected as exc:
+            raise AstriaError(exc.code, exc.message, exc.status) from None
         except GatewayUnavailable as exc:
             raise AstriaError("GATEWAY_TIDAK_TERSEDIA", "gateway tidak dapat menerima rahasia", 503) from exc
         CHANGES.labels("gateway_secret").inc()

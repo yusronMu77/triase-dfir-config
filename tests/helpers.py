@@ -18,7 +18,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
-from astria_config.gateway_client import GatewayUnavailable
+from astria_config.gateway_client import GatewayRejected, GatewayUnavailable
 from astria_config.main import build_app
 from astria_config.settings import Settings
 
@@ -75,10 +75,13 @@ class FakeGateway:
     def __init__(self) -> None:
         self.received: list[tuple[str, str]] = []
         self.down = False
+        self.reject: str | None = None
 
     async def put_secret(self, key: str, value: str) -> None:
         if self.down:
             raise GatewayUnavailable("gateway mati (uji)")
+        if self.reject is not None:
+            raise GatewayRejected(self.reject)
         self.received.append((key, value))
 
 

@@ -430,6 +430,17 @@ def test_forward_gateway_down_is_503(env: Env) -> None:
     assert CANARY not in resp.text
 
 
+@pytest.mark.parametrize(
+    ("code", "status"),
+    [("GW_KUNCI_TIDAK_DIKENAL", 404), ("GW_DIKUNCI_ENV", 409), ("GW_EVENT_INVALID", 422)],
+)
+def test_forward_gateway_rejection_keeps_original_code(env: Env, code: str, status: int) -> None:
+    env.gateway.reject = code
+    resp = env.call("put", "/v1/secrets/gateway/telegram.bot_token", env.admin(reauth=True), json={"value": CANARY})
+    assert (resp.status_code, _code(resp)) == (status, code)
+    assert CANARY not in resp.text
+
+
 def test_forward_audit_down_is_503_and_nothing_sent(env: Env) -> None:
     env.audit.down = True
     resp = env.call("put", "/v1/secrets/gateway/telegram.bot_token", env.admin(reauth=True), json={"value": CANARY})
