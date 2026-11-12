@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- `astria-common` naik ke v0.2.3, yang menyematkan `astria-contracts` v0.4.0. Override `[tool.uv]` dihapus.
+
 ## [0.2.0] - 2026-11-12
 
 Versi penuh (issue identity#4). Memakai kontrak contracts v0.4.0 (`config-internal` OpenAPI dan event `config.changed`).
