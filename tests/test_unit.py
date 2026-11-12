@@ -6,6 +6,7 @@ import json
 import os
 import stat
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -251,7 +252,7 @@ def test_content_hash_is_canonical() -> None:
         catalogs.content_hash({"x": float("nan")})
 
 
-VALID = {
+VALID: dict[str, Any] = {
     "alert_penjelasan": {"entries": {"4625": {"judul": "Logon gagal", "penjelasan": "Banyak percobaan gagal"}}},
     "pola_insiden": {"pola": {"brute": {"judul": "Brute force", "langkah": ["S-isolasi"]}}},
     "temuan_korelasi": {"temuan": {"k1": {"judul": "Korelasi"}}},

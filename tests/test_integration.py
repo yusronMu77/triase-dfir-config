@@ -1,7 +1,7 @@
 """Uji integrasi dengan PostgreSQL sungguhan (`ASTRIA_TEST_DATABASE_URL`, tersedia di kontainer py devenv).
 
-Skema dibuat dari kosong tiap uji (`metadata.create_all`), jadi uji ini juga membuktikan config hidup dari basis data
-kosong. Audit dipalsukan; tidak ada panggilan jaringan keluar.
+Skema dibuat dari kosong tiap uji lewat migrasi Alembic (`ensure_schema`), jadi uji ini juga membuktikan migrasi
+baseline hidup di PostgreSQL kosong. Audit dipalsukan; tidak ada panggilan jaringan keluar.
 """
 
 from __future__ import annotations
@@ -25,8 +25,9 @@ from sqlalchemy.exc import IntegrityError
 
 from astria_config import cli
 from astria_config.auth import Actor
-from astria_config.db import catalog_version, channel_policy, metadata, setting, utcnow
+from astria_config.db import catalog_version, channel_policy, setting, utcnow
 from astria_config.layers import Layers
+from astria_config.migrate import ensure_schema
 from astria_config.rotation import rotate_master
 from astria_config.secrets import MasterKey, Sealed
 from astria_config.service import ConfigService
@@ -42,7 +43,8 @@ CANARY = "nilai-uji-tidak-boleh-bocor-2"
 @pytest.fixture
 async def db() -> AsyncIterator[Database]:
     schema = f"t_{uuid.uuid4().hex[:8]}"
-    database = Database(SecretStr(DB_URL or ""), schema=schema, metadata=[outbox.metadata, metadata])
+    await asyncio.to_thread(ensure_schema, DB_URL or "", schema)  # skema dari migrasi, bukan create_all
+    database = Database(SecretStr(DB_URL or ""), schema=schema)
     await database.start()
     await database.wait_ready(10)
     yield database
@@ -87,7 +89,7 @@ async def _insert(db: Database, table: Any, **values: Any) -> None:
 # ---- skema dari kosong -----------------------------------------------------------------------------------------
 
 
-async def test_schema_is_created_from_empty_database(db: Database) -> None:
+async def test_schema_is_created_by_migration_from_empty_database(db: Database) -> None:
     async with db.engine.connect() as conn:
         tables = {
             r[0]

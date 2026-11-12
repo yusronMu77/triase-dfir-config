@@ -1,7 +1,7 @@
 """Tabel config (SQLAlchemy Core): berjalan di PostgreSQL (server) dan SQLite (lokal dan uji).
 
-Tahap ini memakai `metadata.create_all` seperti layanan lain; Alembic menyusul di tahap berikutnya (Tahap 0 note).
-Outbox dan `processed_events` berasal dari `astria_common.outbox`.
+Skema dibuat dan diubah hanya lewat migrasi Alembic (`migrate.py`, `migrations/`); metadata ini dipakai uji
+untuk membandingkan skema hasil migrasi. Outbox dan `processed_events` berasal dari `astria_common.outbox`.
 """
 
 from __future__ import annotations

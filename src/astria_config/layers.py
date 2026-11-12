@@ -121,7 +121,7 @@ class Layers:
     def locked(self, key: str) -> bool:
         return key in self._env
 
-    def resolve(self, spec: Key, row: Mapping[str, Any] | None = None) -> Resolved:
+    def resolve(self, spec: Key, row: Mapping[Any, Any] | None = None) -> Resolved:
         """Nilai efektif satu kunci biasa. `row` = baris tabel `setting` (bila ada)."""
         key = spec.name
         if key in self._env:

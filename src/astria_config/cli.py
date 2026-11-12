@@ -13,14 +13,13 @@ import os
 import sys
 from pathlib import Path
 
-from astria_common import outbox
 from astria_common.audit_client import AuditUnavailable
 from astria_common.db import Database
 from astria_common.errors import AstriaError
 
 from astria_config import catalogs
-from astria_config.db import metadata
 from astria_config.layers import ENV_PREFIX, ConfigError, Layers, load_file_values
+from astria_config.migrate import ensure_schema
 from astria_config.rotation import rotate_master
 from astria_config.secrets import MasterKey, MasterKeyError
 from astria_config.service import ConfigService, UnavailableAudit
@@ -62,7 +61,8 @@ def cmd_catalog_hash(args: argparse.Namespace) -> int:
 async def _with_service(settings: Settings, work):  # noqa: ANN001, ANN202 - pembantu kecil CLI
     if settings.database_url is None:
         raise SystemExit("ASTRIA_DATABASE_URL wajib diisi")
-    db = Database(settings.database_url, schema=settings.db_schema, metadata=[outbox.metadata, metadata])
+    await asyncio.to_thread(ensure_schema, settings.database_url, settings.db_schema)
+    db = Database(settings.database_url, schema=settings.db_schema)
     await db.start()
     try:
         await db.wait_ready(30)

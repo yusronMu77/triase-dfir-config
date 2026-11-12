@@ -12,7 +12,7 @@ import hashlib
 import json
 import re
 from collections.abc import Callable
-from typing import Any
+from typing import Any, TypeGuard
 
 KINDS = (
     "alert_penjelasan",
@@ -52,7 +52,7 @@ def _is_str(value: Any, *, empty: bool = False) -> bool:
     return isinstance(value, str) and (empty or bool(value.strip()))
 
 
-def _str_list(value: Any) -> bool:
+def _str_list(value: Any) -> TypeGuard[list[str]]:
     return isinstance(value, list) and all(isinstance(v, str) for v in value)
 
 
