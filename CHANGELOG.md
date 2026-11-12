@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Penerusan rahasia ke gateway meneruskan penolakan gateway dengan kode aslinya: `GW_KUNCI_TIDAK_DIKENAL` (404), `GW_DIKUNCI_ENV` (409), `GW_EVENT_INVALID` (422), dengan pesan tetap (pesan gateway tidak diteruskan). Galat lain (401, 5xx, jaringan) tetap 503 `GATEWAY_TIDAK_TERSEDIA`. Sesuai contracts v0.5.0.
+
 ## [0.2.1] - 2026-11-12
 
 ### Added
