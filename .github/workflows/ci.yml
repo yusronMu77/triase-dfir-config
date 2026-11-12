@@ -59,7 +59,7 @@ jobs:
         run: docker build --secret id=gh_token,env=GH_TOKEN -t astria-config:ci .
       - name: Smoke /ready
         run: |
-          docker run -d --name svc -e ASTRIA_ENV=test -p 8000:8000 astria-config:ci
+          docker run -d --name svc -e ASTRIA_ENV=test -e ASTRIA_DATABASE_URL=sqlite+aiosqlite:////tmp/config.db -p 8000:8000 astria-config:ci
           for i in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:8000/ready; then exit 0; fi
             sleep 1
