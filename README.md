@@ -10,7 +10,7 @@
 
 Konfigurasi dan katalog; rahasia tulis-saja.
 
-> Status: versi penuh 0.2.0 (issue identity#4). Repo ini adalah submodule dari workspace `triase-dfir` (folder `config/`). Rancangan: `notes/2026-11-06-triase-dfir-app-config.md` di repo root. Kontrak: `contracts/openapi/config-internal.yaml` dan `contracts/events/config.changed.schema.json` (contracts v0.4.0). Lajur developer: 3.
+> Status: versi 0.2.1 (versi penuh 0.2.0 dari issue identity#4, ditambah migrasi Alembic dan uji PostgreSQL di CI). Repo ini adalah submodule dari workspace `triase-dfir` (folder `config/`). Rancangan: `notes/2026-11-06-triase-dfir-app-config.md` di repo root. Kontrak: `contracts/openapi/config-internal.yaml` dan `contracts/events/config.changed.schema.json` (contracts v0.4.0). Lajur developer: 3.
 
 ## Yang dipegang config
 
@@ -59,6 +59,26 @@ AES-256-GCM. Kunci data diturunkan dengan HKDF-SHA256 dari kunci induk (salt `as
 
 Sembilan jenis: `alert_penjelasan`, `pola_insiden`, `temuan_korelasi`, `langkah`, `sla`, `bobot_skor`, `aturan_android`, `aturan_peran`, `aset`. Satu dokumen JSON utuh per versi; `content_hash` = `sha256:` + hex JSON kanonik (kunci terurut, tanpa spasi, UTF-8). Status `draft` → `ditinjau` → `aktif` → `arsip`, satu `aktif` per jenis (ditegakkan indeks unik parsial). **Empat mata**: peninjau dan pengaktif bukan penulis (juga CHECK di basis data untuk peninjau). `GET .../coverage` memberi peringatan, mis. rujukan langkah di `pola_insiden` yang tidak ada di katalog `langkah` aktif.
 
+## Migrasi skema
+
+Skema hanya dibuat dan diubah lewat Alembic (`src/astria_config/migrations/`). Baseline `0001` memuat semua tabel dan
+CHECK empat mata. Start layanan (`ensure_schema` di `migrate.py`) memilih tindakan ini dan mencatatnya di log:
+
+| Keadaan basis data | Tindakan |
+|---|---|
+| Kosong | `upgrade head` membuat seluruh skema |
+| Ada tabel `setting` tanpa riwayat (dibuat `create_all` versi lama) | `stamp head`; tabel dan datanya tidak disentuh |
+| Ada riwayat `alembic_version` | `upgrade head` (no-op bila sudah di head) |
+
+`/ready` tetap `down` sampai migrasi dan data awal selesai; kegagalan dicoba ulang. Dua perintah pengembang:
+
+```text
+astria-config migrate                                   # sama dengan start: upgrade atau stamp, lalu selesai
+uv run alembic -c alembic.ini revision --autogenerate -m "..."   # buat revisi; URL dari ASTRIA_DATABASE_URL
+```
+
+Revisi baru ditulis sebagai berkas di `versions/`, lalu `alembic -c alembic.ini check` harus menyatakan tidak ada operasi baru.
+
 ## Konfigurasi layanan
 
 | Variabel | Arti |
@@ -80,20 +100,22 @@ config catalog lint <jenis> <berkas.json>               # validasi skema jenis k
 config catalog hash <berkas.json>                       # content_hash kanonik
 config catalog seed <jenis> <berkas.json> --by <nama>   # bootstrap dev: langsung aktif; ditolak di prod
 config rotate-master --new-key-file <jalur>
+astria-config migrate                                   # migrasi skema (lihat Migrasi skema)
 ```
 
 Metrik: `config_changes_total{scope}`, `config_audit_failures_total`, `config_catalog_active_version{kind}`, `config_secret_reads_total{result}`, `config_secret_unreadable_total`, `config_auth_rejections_total{reason}`.
 
 ## Tech stack
 
-Python 3.14, FastAPI, SQLAlchemy Core (PostgreSQL 18 di server, SQLite untuk uji dan lokal), cryptography (AES-GCM, HKDF), uv
+Python 3.14, FastAPI, SQLAlchemy Core (PostgreSQL 18 di server, SQLite untuk uji dan lokal), Alembic (migrasi), cryptography (AES-GCM, HKDF), uv
 
 ## Perintah
 
 ```text
 uv sync                                   # butuh akses ke repo privat contracts dan common (tag git)
 uv run ruff format --check . && uv run ruff check .
-uv run pytest                             # SQLite; uji PostgreSQL ikut jalan bila ASTRIA_TEST_DATABASE_URL diisi
+uv run pytest                             # SQLite; uji PostgreSQL ikut jalan bila ASTRIA_TEST_DATABASE_URL diisi (CI: service PostgreSQL 18)
+uvx mypy --ignore-missing-imports src tests # type-check; astria-common belum membawa py.typed
 sh ../common/template/localtest.sh        # di kontainer py devenv: uji terhadap salinan kerja common dan contracts
 ```
 

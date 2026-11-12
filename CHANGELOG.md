@@ -1,10 +1,20 @@
 # Changelog
 
-## [Unreleased]
+## [0.2.1] - 2026-11-12
+
+### Added
+
+- Migrasi Alembic: baseline `0001` (semua tabel, CHECK empat mata, indeks satu-aktif, outbox) ditulis eksplisit.
+- `astria-config migrate` dan `ensure_schema`: start memilih upgrade, stamp (DB dari `create_all`), atau pembuatan dari nol.
+- `alembic.ini` untuk pengembang; `alembic check` bersih terhadap metadata.
+- CI: service PostgreSQL 18.6 (digest dipin) dan `ASTRIA_TEST_DATABASE_URL`, sehingga uji integrasi PostgreSQL berjalan di CI.
+- Uji `test_migrations.py`: baseline setara metadata, stamp tanpa mengubah data, idempoten, turun dan naik lagi, CHECK tetap jalan.
 
 ### Changed
 
 - `astria-common` naik ke v0.2.3, yang menyematkan `astria-contracts` v0.4.0. Override `[tool.uv]` dihapus.
+- Basis data tidak lagi memakai `create_all` untuk tabel config; outbox dibuat oleh migrasi.
+- Type annotation diperbaiki supaya mypy bersih (tanpa perubahan perilaku).
 
 ## [0.2.0] - 2026-11-12
 

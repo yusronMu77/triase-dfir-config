@@ -17,16 +17,18 @@ from astria_common.auth import ServiceTokenClient, ServiceTokenVerifier
 from astria_common.component import Check
 from astria_common.db import Database
 from astria_common.errors import AstriaError, error_body
+from astria_common.events import EventBus
 from astria_common.log import get_logger
-from astria_common.service import standard_runtime
+from astria_common.outbox import OutboxRelay
+from astria_common.service import Runtime
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import DBAPIError, InterfaceError
 
 from astria_config import routes_admin, routes_svc
-from astria_config.db import metadata
 from astria_config.gateway_client import GatewayClient
 from astria_config.layers import ENV_PREFIX, Layers
+from astria_config.migrate import ensure_schema
 from astria_config.secrets import MasterKey
 from astria_config.service import AuditSink, ConfigService, SecretForwarder, UnavailableAudit
 from astria_config.settings import Settings
@@ -34,14 +36,37 @@ from astria_config.settings import Settings
 log = get_logger(__name__)
 
 
+def _runtime(settings: Settings) -> Runtime:
+    """Komponen standar seperti `astria_common.service.standard_runtime`, tanpa `create_all` untuk tabel.
+
+    Skema config hanya dibuat lewat Alembic (`migrate.py`), jadi outbox pun tidak boleh dibuat diam-diam oleh
+    `Database` sebelum migrasi jalan. Relay outbox tetap ada bila NATS dikonfigurasi.
+    """
+    runtime = Runtime(settings)
+    if settings.database_url is not None:
+        runtime.db = Database(settings.database_url, schema=settings.db_schema)
+    if settings.nats_url:
+        runtime.bus = EventBus(settings.nats_url, client_name=f"astria-{settings.service_name}")
+    if runtime.db is not None and runtime.bus is not None:
+        runtime.relay = OutboxRelay(runtime.db, runtime.bus)
+    return runtime
+
+
 class Bootstrap:
-    """Komponen: menyiapkan data awal (kebijakan kanal, gauge katalog) setelah DB siap; /ready `down` sebelum itu."""
+    """Komponen: migrasi skema, lalu data awal (kebijakan kanal, gauge katalog) setelah DB siap.
+
+    /ready `down` sebelum itu.
+    """
 
     name = "config"
     required = True
 
     def __init__(self, settings: Settings, runtime_db: Database, service: ConfigService) -> None:
+        if settings.database_url is None:
+            raise RuntimeError("config: ASTRIA_DATABASE_URL wajib diisi")
         self._settings = settings
+        self._url = settings.database_url
+        self._schema = settings.db_schema
         self._db = runtime_db
         self._service = service
         self._done = asyncio.Event()
@@ -55,6 +80,8 @@ class Bootstrap:
         await self._db.wait_ready()
         while True:
             try:
+                # Skema lewat migrasi (idempoten): riwayat ada = upgrade; DB create_all lama = stamp; kosong = buat.
+                await asyncio.to_thread(ensure_schema, self._url, self._schema)
                 created = await self._service.seed_policies(self._settings.channels_to_seed())
                 await self._service.refresh_catalog_gauge()
                 if created:
@@ -91,7 +118,7 @@ def build_app(
     layers = Layers.from_settings(settings.config_file, env)  # ConfigError = gagal start
     master = MasterKey.load_or_create(settings.master_key_file, create=settings.env != "prod")
 
-    runtime = standard_runtime(settings, metadata=[metadata])
+    runtime = _runtime(settings)
     db = runtime.require_db()
 
     key = settings.service_key_bytes()

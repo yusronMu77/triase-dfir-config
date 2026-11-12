@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Mapping
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 from astria_common import outbox
 from astria_common.audit_client import AuditUnavailable, audit_event
@@ -84,7 +84,7 @@ def _setting_dict(resolved: Any) -> dict[str, Any]:
     }
 
 
-def _policy_dict(row: Mapping[str, Any]) -> dict[str, Any]:
+def _policy_dict(row: Mapping[Any, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {
         "channel_id": row["channel_id"],
         "active": bool(row["active"]),
@@ -98,7 +98,7 @@ def _policy_dict(row: Mapping[str, Any]) -> dict[str, Any]:
     return out
 
 
-def _catalog_dict(row: Mapping[str, Any]) -> dict[str, Any]:
+def _catalog_dict(row: Mapping[Any, Any]) -> dict[str, Any]:
     return {
         "kind": row["kind"],
         "version": int(row["version"]),
@@ -169,12 +169,12 @@ class ConfigService:
         conn: AsyncConnection,
         *,
         actor: str,
-        actor_type: str,
+        actor_type: Literal["user", "service", "system"],
         action: str,
         target_type: str,
         target_id: str,
         payload: dict[str, Any],
-        via: str = "api",
+        via: Literal["ui", "api", "bot", "cli", "system"] = "api",
     ) -> None:
         record = AuditRecord(
             idempotency_key=f"config-{action}-{target_id}-{uuid.uuid4().hex[:16]}"[:200],
@@ -492,7 +492,7 @@ class ConfigService:
             raise AstriaError("KATALOG_TIDAK_DITEMUKAN", "jenis katalog tidak dikenal", 404)
         return kind
 
-    async def _version_row(self, conn: AsyncConnection, kind: str, version: int) -> Mapping[str, Any]:
+    async def _version_row(self, conn: AsyncConnection, kind: str, version: int) -> Mapping[Any, Any]:
         row = (
             (
                 await conn.execute(
@@ -674,7 +674,7 @@ class ConfigService:
         log.info("katalog_diaktifkan", kind=kind, version=version, actor=actor.sub)
         return _catalog_dict({**row, "status": "aktif", "activated_at": now})
 
-    async def _active_row(self, conn: AsyncConnection, kind: str) -> Mapping[str, Any]:
+    async def _active_row(self, conn: AsyncConnection, kind: str) -> Mapping[Any, Any]:
         row = (
             (
                 await conn.execute(
