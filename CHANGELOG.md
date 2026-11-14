@@ -4,6 +4,8 @@
 
 ### Changed
 
+- infra#9: `astria-config migrate` menjalankan pagar `ASTRIA_ENV` sebelum basis data disentuh (start layanan sudah memanggilnya sebelum kunci induk dibuat). Uji gagal-mulai `tests/test_startup_env.py` lewat titik masuk `astria-config`, termasuk kunci induk tidak dibuat saat start ditolak.
+
 - Penerusan rahasia ke gateway meneruskan penolakan gateway dengan kode aslinya: `GW_KUNCI_TIDAK_DIKENAL` (404), `GW_DIKUNCI_ENV` (409), `GW_EVENT_INVALID` (422), dengan pesan tetap (pesan gateway tidak diteruskan). Galat lain (401, 5xx, jaringan) tetap 503 `GATEWAY_TIDAK_TERSEDIA`. Sesuai contracts v0.5.0.
 
 ## [0.2.1] - 2026-11-12
