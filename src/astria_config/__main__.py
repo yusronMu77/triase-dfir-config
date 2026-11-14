@@ -5,6 +5,7 @@
 
 import sys
 
+from astria_common import envguard
 from astria_common.app import run
 
 from astria_config.main import build_app
@@ -20,6 +21,7 @@ _ACTIONS = {
 
 def migrate() -> int:
     settings = Settings()
+    envguard.enforce(settings)  # sebelum basis data disentuh
     if settings.database_url is None:
         print("ASTRIA_DATABASE_URL wajib diisi", file=sys.stderr)
         return 2
